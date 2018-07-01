@@ -7,7 +7,7 @@ from os import path, walk
 from lxml import html
 from datetime import datetime
 
-from dbtool import DBTool
+from classes.dbtool import DBTool
 
 # Constants
 DISCLOSURES_PARSER = 'disclosures-parser'
@@ -75,17 +75,16 @@ class DisclosuresParser(object):
                     report_code = cells[-2]
                     schedule = cells[-1]
 
-                    c = self.db.query(DISCLOSURES_TABLE,
+                    if self.record_exists(
                         filer_id=filer_id,
                         filing_year=filing_year,
                         contributor=contributor,
-                        address = address,
-                        amount = amount,
-                        date = date,
-                        report_code = report_code,
-                        schedule = schedule
-                    )
-                    if c.fetchone() is not None:
+                        address=address,
+                        amount=amount,
+                        date=date,
+                        report_code=report_code,
+                        schedule=schedule
+                    ):
                         continue
 
                     self.db.insert(DISCLOSURES_TABLE,
@@ -101,5 +100,9 @@ class DisclosuresParser(object):
                         report_code,
                         schedule
                     )
+                    self.logger.info('Inserted record for contributor %s, filer_id %s.', contributor, filer_id) # noqa
 
-                    self.logger.info('Inserted record for contributor %s to filer_id %s.', contributor, filer_id)
+
+    def record_exists(self, **kwargs):
+        c = self.db.query(DISCLOSURES_TABLE, **kwargs)
+        return c.fetchone() is not None
