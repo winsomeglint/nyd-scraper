@@ -35,9 +35,11 @@ class DBTool(object):
         if not len(properties):
             properties = '*'
 
+        query_statement = "SELECT %s FROM %s" % (properties,
+                                                 table_name)
         where = self.param_string(kwargs)
-        query_statement = "SELECT %s FROM %s WHERE %s" % (properties,
-                                                          table_name, where)
+        if where is not None:
+            query_statement += '  WHERE %s' % where
 
         if order_by is not None:
             query_statement += ' ORDER BY %s' % order_by

@@ -1,17 +1,19 @@
+import os
 import re
-import sys
 import requests
 import logging
+import tempfile
 
 from os import path
-from hashlib import md5
 from datetime import datetime
+
+from classes.dbtool import DBTool
 
 RUNTIME = datetime.now()
 
 DISCLOSURES_SCRAPER = 'disclosures-scraper'
 
-COMMITTEES_URL = 'http://www.elections.ny.gov:8080/plsql_browser/all_filers'
+FILERS_URL = 'http://www.elections.ny.gov:8080/plsql_browser/all_filers'
 DISCLOSURES_URL = 'http://www.elections.ny.gov:8080/plsql_browser/filer_contribution_details'
 
 TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
@@ -26,8 +28,10 @@ DISCLOSURES_DATA = {
     'amount_in': 0 # Keep this
 }
 
-COMMITTEES_PATH = 'html/committees.html'
+FILERS_PATH = 'html/filers.html'
 DISCLOSURES_PATH = 'html/disclosures/%s - %s.html'
+
+FILERS_TABLE = 'filer_ids'
 
 
 class DisclosuresScraper(object):
@@ -35,10 +39,11 @@ class DisclosuresScraper(object):
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
         self.session = requests.session()
+        self.db = DBTool()
         self.logger = logging.getLogger(DISCLOSURES_SCRAPER)
 
 
-    def scrape(self):
+    def scrape_disclosures(self):
         """ """
         for filer_id in self.get_filer_ids():
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
@@ -52,37 +57,35 @@ class DisclosuresScraper(object):
                 try:
                     r = self.session.post(DISCLOSURES_URL, data)
                 except requests.exceptions.ConnectionError as e:
-                    self.scrape()
+                    self.scrape_disclosures()
                     return
+
                 with open(fn, 'ab+') as fh:
                     fh.write(r.content)
 
 
     def get_filer_ids(self):
         """ """
-        if not path.isfile(COMMITTEES_PATH):
-            r = self.session.get(COMMITTEES_URL)
-            with open(COMMITTEES_PATH, 'w+') as fh:
-                fh.write(r.content.decode('utf-8'))
+        c = self.db.query(FILERS_TABLE, properties=['filer_id'])
 
-        with open(COMMITTEES_PATH) as fh:
-            for line in fh.readlines():
-                line = self.remove_html_tags(line)
-                line = line.strip()
-                if not len(line):
-                    continue
-                first_char = line[0]
-                str_remainder = line[1:]
-                if not first_char.isalpha() or len(str_remainder) < 5 or len(str_remainder) > 7:
-                    continue
-                try:
-                    int(str_remainder)
-                except ValueError:
-                    continue
+        for filer_id in c.fetchall():
+            yield filer_id[0]
 
-                yield line
+    def scrape_filers(self):
+        """ """
+        r = self.session.get(FILERS_URL)
+        if path.isfile(FILERS_PATH):
+            # Check if the old file and the new are different sizes. If so, use the
+            # new one.
+            filers_file_size = os.path.getsize(FILERS_PATH)
+            tmp_file, tmp_path = tempfile.mkstemp()
+            os.write(tmp_file, r.content)
+            os.close(tmp_file)
+            tmp_file_size = os.path.getsize(tmp_path)
+            os.remove(tmp_path)
+            if tmp_file_size == filers_file_size:
+                return
 
-    def remove_html_tags(self, text):
-        """Remove html tags from a string"""
-        clean = re.compile('<.*?>')
-        return re.sub(clean, '', text)
+        with open(FILERS_PATH, 'w+') as fh:
+            fh.write(r.content)
+        self.logger.log('New filer ids loaded from source.')

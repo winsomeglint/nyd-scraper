@@ -1,4 +1,5 @@
 # Ignore output of scraper
 data.sqlite
 *.pyc
-html
+*.db-journal
+*.db

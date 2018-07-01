@@ -1,5 +1,6 @@
 import re
 import sys
+import click
 import requests
 import logging
 
@@ -12,14 +13,43 @@ from classes.scraper import DisclosuresScraper
 logging.basicConfig(level=logging.INFO)
 
 
-def run(argv):
-    if len(argv) > 1 and argv[1] == '-p':
-        parser = DisclosuresParser()
-        parser.parse()
-    else:
-        scraper = DisclosuresScraper()
-        scraper.scrape()
+@click.group()
+@click.pass_context
+def cli(ctx):
+    ctx.obj['scraper'] = DisclosuresScraper()
+    ctx.obj['parser'] = DisclosuresParser()
+    pass
+
+
+@click.command()
+@click.pass_context
+def scrape_disclosures(ctx):
+    ctx.obj['scraper'].scrape_disclosures()
+
+
+@click.command()
+@click.pass_context
+def scrape_filer_ids(ctx):
+    ctx.obj['scraper'].scrape_filer_ids()
+
+
+@click.command()
+@click.pass_context
+def parse_disclosures(ctx):
+    ctx.obj['parser'].parse_disclosures()
+
+
+@click.command()
+@click.pass_context
+def parse_filer_ids(ctx):
+    ctx.obj['parser'].parse_filer_ids()
+
+
+cli.add_command(scrape_disclosures)
+cli.add_command(scrape_filer_ids)
+cli.add_command(parse_disclosures)
+cli.add_command(parse_filer_ids)
 
 
 if __name__ == '__main__':
-    run(sys.argv)
+    cli(obj={})
