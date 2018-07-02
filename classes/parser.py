@@ -160,7 +160,7 @@ class DisclosuresParser(object):
     def skip_blank_lines(self, fh):
         """ """
         line_not_found = True
-        while line_not_found:
+        while line_not_found and line:
             line = fh.readline()
             line = self.remove_html_tags(line)
             line = line.strip()
