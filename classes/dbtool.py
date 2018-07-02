@@ -2,7 +2,7 @@ import sqlite3
 import logging
 
 DB_TOOL = 'db-tool'
-DISCLOSURES_DB = 'disclosures.db'
+DISCLOSURES_DB = 'data.sqlite'
 
 
 class DBTool(object):
