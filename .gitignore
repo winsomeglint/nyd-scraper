@@ -6,3 +6,4 @@ data.sqlite
 dist
 build
 *.egg-info
+__init__.py
