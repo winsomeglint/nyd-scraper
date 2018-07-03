@@ -8,7 +8,7 @@ from os import path, walk
 from lxml import html
 from datetime import datetime
 
-from classes.dbtool import DBTool
+from classes.db import DBTool
 
 # Constants
 DISCLOSURES_PARSER = 'disclosures-parser'
@@ -120,7 +120,7 @@ class DisclosuresParser(object):
                     self.logger.info('Inserted record for contributor %s, filer_id %s.', contributor, filer_id) # noqa
 
 
-    def parse_filer_ids(self):
+    def parse_filers(self):
         """ """
         with open(FILERS_PATH) as fh:
             line = self.skip_blank_lines(fh)
@@ -160,11 +160,12 @@ class DisclosuresParser(object):
     def skip_blank_lines(self, fh):
         """ """
         line_not_found = True
+        line = fh.readline()
         while line_not_found and line:
-            line = fh.readline()
             line = self.remove_html_tags(line)
             line = line.strip()
             if not len(line):
+                line = fh.readline()
                 continue
             line_not_found = False
         return line

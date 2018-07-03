@@ -7,7 +7,7 @@ import tempfile
 from os import path
 from datetime import datetime
 
-from classes.dbtool import DBTool
+from classes.db import DBTool
 
 RUNTIME = datetime.now()
 

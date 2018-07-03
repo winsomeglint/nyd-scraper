@@ -7,8 +7,8 @@ import logging
 from os import path
 from hashlib import md5
 
-from classes.parsetool import DisclosuresParser
-from classes.scrapetool import DisclosuresScraper
+from classes.parser import DisclosuresParser
+from classes.scraper import DisclosuresScraper
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,8 +29,8 @@ def scrape_disclosures(ctx):
 
 @click.command()
 @click.pass_context
-def scrape_filer_ids(ctx):
-    ctx.obj['scraper'].scrape_filer_ids()
+def scrape_filers(ctx):
+    ctx.obj['scraper'].scrape_filers()
 
 
 @click.command()
@@ -41,14 +41,14 @@ def parse_disclosures(ctx):
 
 @click.command()
 @click.pass_context
-def parse_filer_ids(ctx):
-    ctx.obj['parser'].parse_filer_ids()
+def parse_filers(ctx):
+    ctx.obj['parser'].parse_filers()
 
 
 cli.add_command(scrape_disclosures)
-cli.add_command(scrape_filer_ids)
+cli.add_command(scrape_filers)
 cli.add_command(parse_disclosures)
-cli.add_command(parse_filer_ids)
+cli.add_command(parse_filers)
 
 
 if __name__ == '__main__':
