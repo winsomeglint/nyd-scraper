@@ -13,7 +13,7 @@ from classes.db import DBTool
 # Constants
 DISCLOSURES_PARSER = 'disclosures-parser'
 DISCLOSURES_DIR = 'html/disclosures'
-DISCLOSURES_TABLE = 'ny_disclosures'
+DISCLOSURES_TABLE = 'disclosures'
 
 TERMINATE = b'total contributions received during period'
 
@@ -23,7 +23,7 @@ RUNTIME = datetime.now()
 TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
 UUID_FORMAT = '%Y%m%d%H%M%S%f'
 
-FILERS_TABLE = 'filer_ids'
+FILERS_TABLE = 'filers'
 FILERS_PATH = 'html/filers.html'
 
 # Regexs
