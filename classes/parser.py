@@ -106,6 +106,7 @@ class DisclosuresParser(object):
 
                     self.db.insert(DISCLOSURES_TABLE,
                         None,
+                        datetime.utcnow,
                         self.run_id,
                         datetime.now().strftime(UUID_FORMAT),
                         filer_id,
@@ -146,6 +147,7 @@ class DisclosuresParser(object):
                             ):
                                 self.db.insert(FILERS_TABLE,
                                     None,
+                                    datetime.utcnow,
                                     self.run_id,
                                     filer_id,
                                     name,
