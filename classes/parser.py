@@ -22,6 +22,7 @@ ROW_SELECTOR = './/table[2]/tr'
 RUNTIME = datetime.now()
 TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
 UUID_FORMAT = '%Y%m%d%H%M%S%f'
+DATE_FORMAT = '%d-%b-%y'
 
 FILERS_TABLE = 'filers'
 FILERS_PATH = 'html/filers.html'
@@ -41,13 +42,14 @@ class DisclosuresParser(object):
         #If table doesn't already exist, create it
         self.db.create_table(DISCLOSURES_TABLE,
             id='integer primary key autoincrement',
+            created='numeric',
             run_id='text',
-            uuid='text',
+            uuid='integer',
             filer_id='text',
             filing_year='text',
             contributor='text',
             address='text',
-            amount='text',
+            amount='real',
             date='text',
             report_code='text',
             schedule='text'
@@ -55,6 +57,7 @@ class DisclosuresParser(object):
 
         self.db.create_table(FILERS_TABLE,
             id='integer primary key autoincrement',
+            created='numeric',
             run_id='text',
             filer_id='text',
             name='text',
@@ -83,14 +86,15 @@ class DisclosuresParser(object):
                     cells = list(filter(lambda x: len(x), cells))
                     if not len(cells):
                         continue
-                    filing_year = cells[0]
+                    filing_year = int(cells[0]) or 1000
                     contributor = cells[1]
                     address_length = len(cells) - 6
                     address = '; '.join(cells[2:2 + address_length])
-                    amount = cells[-4]
-                    date = cells[-3]
+                    amount = float(cells[-4].replace(',','')) or -1
+                    date = str(datetime.strptime(cells[-3], DATE_FORMAT))
                     report_code = cells[-2]
                     schedule = cells[-1]
+                    uuid = int(datetime.now().strftime(UUID_FORMAT)) or 1000
 
                     if self.record_exists(DISCLOSURES_TABLE,
                         filer_id=filer_id,
@@ -106,9 +110,9 @@ class DisclosuresParser(object):
 
                     self.db.insert(DISCLOSURES_TABLE,
                         None,
-                        datetime.utcnow,
+                        str(datetime.utcnow()),
                         self.run_id,
-                        datetime.now().strftime(UUID_FORMAT),
+                        uuid,
                         filer_id,
                         filing_year,
                         contributor,
@@ -147,7 +151,7 @@ class DisclosuresParser(object):
                             ):
                                 self.db.insert(FILERS_TABLE,
                                     None,
-                                    datetime.utcnow,
+                                    str(datetime.utcnow()),
                                     self.run_id,
                                     filer_id,
                                     name,

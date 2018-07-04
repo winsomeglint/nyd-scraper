@@ -55,7 +55,7 @@ class DBTool(object):
             if value is None:
                 value = 'NULL'
             elif isinstance(value, str):
-                value = "'%s'" % value
+                value = '"%s"' % value
             return str(value)
 
         values = ','.join(map(process_value, args))
