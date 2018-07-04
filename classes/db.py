@@ -54,9 +54,9 @@ class DBTool(object):
         def process_value(value):
             if value is None:
                 value = 'NULL'
-            elif isinstance(value, str):
-                value = '"%s"' % value
-            return str(value)
+            else:
+                value = self.format_param(value)
+            return value
 
         values = ','.join(map(process_value, args))
         values = '(%s)' % values
@@ -70,13 +70,13 @@ class DBTool(object):
         if not(len(set_params.keys())) or not(len(where_params.keys())):
             return
 
-
         set_to = self.param_string(set_params)
         where = self.param_string(where_params)
         update_statement = "UPDATE %s SET %s WHERE %s" % (table_name, set_to,
                                                           where)
 
         self.execute(update_statement)
+
 
     def delete(self, table_name, **kwargs):
         if not len(kwargs.keys()):
@@ -95,12 +95,16 @@ class DBTool(object):
 
         param_list = []
         for k, v in params.items():
-            if isinstance(v, str):
-                v = '"%s"' % v
-            else:
-                v = str(v)
+            v = self.format_param(v)
             param_list.append("%s = %s" % (k, v))
         return ' and '.join(param_list)
+
+
+    def format_param(self, param):
+        if isinstance(param, str):
+            param = param.replace('"', '\'')
+            param = '"%s"' % param
+        return str(param)
 
 
     def execute(self, statement):
