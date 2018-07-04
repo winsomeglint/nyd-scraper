@@ -1,14 +1,14 @@
+import os
 import sqlite3
 import logging
 
 DB_TOOL = 'db-tool'
-DISCLOSURES_DB = 'data.sqlite'
 
 
 class DBTool(object):
 
     def __init__(self):
-        self.db = sqlite3.connect(DISCLOSURES_DB)
+        self.db = sqlite3.connect(os.environ.get('NYD_DATABASE_URL'))
         self.logger = logging.getLogger(DB_TOOL)
 
     def  __del__(self):
