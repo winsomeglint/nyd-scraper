@@ -95,7 +95,11 @@ class DBTool(object):
 
         param_list = []
         for k, v in params.items():
-            param_list.append("%s = '%s'" % (k, v))
+            if isinstance(v, str):
+                v = '"%s"' % v
+            else:
+                v = str(v)
+            param_list.append("%s = %s" % (k, v))
         return ' and '.join(param_list)
 
 
