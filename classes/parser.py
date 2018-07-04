@@ -70,7 +70,7 @@ class DisclosuresParser(object):
                 filer_id = fn.split(' - ')[0]
                 file_path = path.join(subdir, fn)
                 self.logger.info('Processing: %s', file_path)
-                with open(file_path) as fh:
+                with open(file_path, encoding='utf8',errors='replace') as fh:
                     content = fh.read()
                 doc = html.fromstring(content)
 
@@ -123,7 +123,7 @@ class DisclosuresParser(object):
 
     def parse_filers(self):
         """ """
-        with open(FILERS_PATH) as fh:
+        with open(FILERS_PATH, encoding='utf8',errors='replace') as fh:
             line = self.skip_blank_lines(fh)
             while line:
                 if re.match(FILER_ID_RE, line):
