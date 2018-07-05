@@ -31,7 +31,7 @@ DISCLOSURES_DATA = {
 FILERS_PATH = 'html/filers.html'
 DISCLOSURES_PATH = 'html/disclosures/%s - %s.html'
 
-FILERS_TABLE = 'filers'
+FILERS_TABLE = 'filer'
 
 
 class DisclosuresScraper(object):

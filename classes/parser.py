@@ -7,13 +7,14 @@ import logging
 from os import path, walk
 from lxml import html
 from datetime import datetime
+from hashlib import sha1
 
 from classes.db import DBTool
 
 # Constants
 DISCLOSURES_PARSER = 'disclosures-parser'
 DISCLOSURES_DIR = 'html/disclosures'
-DISCLOSURES_TABLE = 'disclosures'
+DISCLOSURES_TABLE = 'disclosure'
 
 TERMINATE = b'total contributions received during period'
 
@@ -24,7 +25,7 @@ TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
 UUID_FORMAT = '%Y%m%d%H%M%S%f'
 DATE_FORMAT = '%d-%b-%y'
 
-FILERS_TABLE = 'filers'
+FILERS_TABLE = 'filer'
 FILERS_PATH = 'html/filers.html'
 
 # Regexs
@@ -59,6 +60,7 @@ class DisclosuresParser(object):
             id='integer primary key autoincrement',
             created='numeric',
             run_id='text',
+            uuid='text',
             filer_id='text',
             name='text',
             address='text',
@@ -94,7 +96,9 @@ class DisclosuresParser(object):
                     date = str(datetime.strptime(cells[-3], DATE_FORMAT))
                     report_code = cells[-2]
                     schedule = cells[-1]
-                    uuid = int(datetime.now().strftime(UUID_FORMAT)) or 1000
+                    uuid = filer_id + contributor + address + str(amount) + date \
+                           + report_code + schedule + self.run_id
+                    uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
 
                     if self.record_exists(DISCLOSURES_TABLE,
                         filer_id=filer_id,
@@ -143,6 +147,9 @@ class DisclosuresParser(object):
                             status_not_reached = False
                             status = line.split(' = ')[-1]
                             address = '; '.join(address)
+                            uuid = filer_id + name + address + status \
+                                   + self.run_id
+                            uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
                             if not self.record_exists(FILERS_TABLE,
                                 filer_id=filer_id,
                                 name=name,
@@ -153,6 +160,7 @@ class DisclosuresParser(object):
                                     None,
                                     str(datetime.utcnow()),
                                     self.run_id,
+                                    uuid,
                                     filer_id,
                                     name,
                                     address,
