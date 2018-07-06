@@ -60,11 +60,19 @@ class DisclosuresParser(object):
                     cells = list(filter(lambda x: len(x), cells))
                     if not len(cells):
                         continue
-                    filing_year = int(cells[0]) or 1000
+                    filing_year = cells[0]
+                    try:
+                        filing_year = int(filing_year)
+                    except ValueError:
+                        filing_year = 0
                     contributor = cells[1]
                     address_length = len(cells) - 6
                     address = '; '.join(cells[2:2 + address_length])
-                    amount = float(cells[-4].replace(',','')) or -1
+                    amount = cells[-4].replace(',','')
+                    try:
+                        amount = float(amount)
+                    except ValueError:
+                        amount = -1.00
                     date = str(datetime.strptime(cells[-3], DATE_FORMAT))
                     report_code = cells[-2]
                     schedule = cells[-1]
