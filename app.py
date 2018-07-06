@@ -7,8 +7,8 @@ import logging
 from os import path
 from hashlib import md5
 
-from classes.parser import DisclosuresParser
-from classes.scraper import DisclosuresScraper
+from app.parser import DisclosuresParser
+from app.scraper import DisclosuresScraper
 
 logging.basicConfig(level=logging.INFO)
 

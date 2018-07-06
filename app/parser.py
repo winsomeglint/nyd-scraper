@@ -9,12 +9,14 @@ from lxml import html
 from datetime import datetime
 from hashlib import sha1
 
-from classes.db import DBTool
+from app.db import db_session
+from app.models import Filer, Disclosure
+
+from sqlalchemy import and_
 
 # Constants
 DISCLOSURES_PARSER = 'disclosures-parser'
 DISCLOSURES_DIR = 'html/disclosures'
-DISCLOSURES_TABLE = 'disclosure'
 
 TERMINATE = b'total contributions received during period'
 
@@ -22,22 +24,19 @@ ROW_SELECTOR = './/table[2]/tr'
 
 RUNTIME = datetime.now()
 TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
-UUID_FORMAT = '%Y%m%d%H%M%S%f'
 DATE_FORMAT = '%d-%b-%y'
 
-FILERS_TABLE = 'filer'
 FILERS_PATH = 'html/filers.html'
 
 # Regexs
 FILER_ID_RE ='[AC][0-9][0-9][0-9][0-9][0-9]'
-STATUS_PATTERN = 'status = '
+STATUS_PATTERN = 'status ='
 
 
 class DisclosuresParser(object):
 
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
-        self.db = DBTool()
         self.logger = logging.getLogger(DISCLOSURES_PARSER)
 
 
@@ -73,7 +72,21 @@ class DisclosuresParser(object):
                            + report_code + schedule + self.run_id
                     uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
 
-                    if self.record_exists(DISCLOSURES_TABLE,
+                    if db_session.query(Disclosure).filter(and_(
+                        Disclosure.filer_id == filer_id,
+                        Disclosure.filing_year == filing_year,
+                        Disclosure.contributor == contributor,
+                        Disclosure.address == address,
+                        Disclosure.amount == amount,
+                        Disclosure.date == date,
+                        Disclosure.report_code == report_code,
+                        Disclosure.schedule == schedule
+                    )).first() is not None:
+                        continue
+
+                    record = Disclosure(
+                        run_id=self.run_id,
+                        uuid=uuid,
                         filer_id=filer_id,
                         filing_year=filing_year,
                         contributor=contributor,
@@ -82,24 +95,11 @@ class DisclosuresParser(object):
                         date=date,
                         report_code=report_code,
                         schedule=schedule
-                    ):
-                        continue
-
-                    self.db.insert(DISCLOSURES_TABLE,
-                        None,
-                        str(datetime.utcnow()),
-                        self.run_id,
-                        uuid,
-                        filer_id,
-                        filing_year,
-                        contributor,
-                        address,
-                        amount,
-                        date,
-                        report_code,
-                        schedule
                     )
-                    self.logger.info('Inserted record for contributor %s, filer_id %s.', contributor, filer_id) # noqa
+                    db_session.add(record)
+                    self.logger.info('Inserting %s', record)
+
+                db_session.commit()
 
 
     def parse_filers(self):
@@ -123,25 +123,27 @@ class DisclosuresParser(object):
                             uuid = filer_id + name + address + status \
                                    + self.run_id
                             uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
-                            if not self.record_exists(FILERS_TABLE,
-                                filer_id=filer_id,
-                                name=name,
-                                address=address,
-                                status=status
-                            ):
-                                self.db.insert(FILERS_TABLE,
-                                    None,
-                                    str(datetime.utcnow()),
-                                    self.run_id,
-                                    uuid,
-                                    filer_id,
-                                    name,
-                                    address,
-                                    status
+                            if db_session.query(Filer).filter(and_(
+                                Filer.filer_id == filer_id,
+                                Filer.name == name,
+                                Filer.address == address,
+                                Filer.status == status
+                            )).first() is None:
+                                record = Filer(
+                                    run_id=self.run_id,
+                                    uuid=uuid,
+                                    filer_id=filer_id,
+                                    name=name,
+                                    address=address,
+                                    status=status
                                 )
+                                db_session.add(record)
+                                self.logger.info('Inserting... %s', record)
                             break
                         address.append(line)
                 line = self.skip_blank_lines(fh)
+
+        db_session.commit()
 
 
     def skip_blank_lines(self, fh):
@@ -162,9 +164,3 @@ class DisclosuresParser(object):
         """Remove html tags from a string"""
         clean = re.compile('<.*?>')
         return re.sub(clean, '', text)
-
-
-    def record_exists(self, table_name, **kwargs):
-        """ """
-        c = self.db.query(table_name, **kwargs)
-        return c.fetchone() is not None

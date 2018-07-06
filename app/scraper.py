@@ -7,7 +7,7 @@ import tempfile
 from os import path
 from datetime import datetime
 
-from classes.db import DBTool
+from app.models import Filer
 
 RUNTIME = datetime.now()
 
@@ -31,15 +31,12 @@ DISCLOSURES_DATA = {
 FILERS_PATH = 'html/filers.html'
 DISCLOSURES_PATH = 'html/disclosures/%s - %s.html'
 
-FILERS_TABLE = 'filer'
-
 
 class DisclosuresScraper(object):
 
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
         self.session = requests.session()
-        self.db = DBTool()
         self.logger = logging.getLogger(DISCLOSURES_SCRAPER)
 
 
