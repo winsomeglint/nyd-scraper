@@ -40,33 +40,6 @@ class DisclosuresParser(object):
         self.db = DBTool()
         self.logger = logging.getLogger(DISCLOSURES_PARSER)
 
-        #If table doesn't already exist, create it
-        self.db.create_table(DISCLOSURES_TABLE,
-            id='integer primary key autoincrement',
-            created='numeric',
-            run_id='text',
-            uuid='integer',
-            filer_id='text',
-            filing_year='text',
-            contributor='text',
-            address='text',
-            amount='real',
-            date='text',
-            report_code='text',
-            schedule='text'
-        )
-
-        self.db.create_table(FILERS_TABLE,
-            id='integer primary key autoincrement',
-            created='numeric',
-            run_id='text',
-            uuid='text',
-            filer_id='text',
-            name='text',
-            address='text',
-            status='text'
-        )
-
 
     def parse_disclosures(self):
         """ """
