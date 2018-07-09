@@ -73,7 +73,7 @@ class DisclosuresParser(object):
                     try:
                         date = str(datetime.strptime(cells[-3], DATE_FORMAT))
                     except ValueError:
-                        date = ''
+                        date = None
                         amount_index = -3
                     amount = cells[amount_index].replace(',','')
                     try:
@@ -82,8 +82,11 @@ class DisclosuresParser(object):
                         amount = -1.00
                     report_code = cells[-2]
                     schedule = cells[-1]
-                    uuid = filer_id + contributor + address + str(amount) + date \
-                           + report_code + schedule + self.run_id
+                    uuid_date = date
+                    if date is None:
+                        uuid_date = str(datetime.utcnow())
+                    uuid = filer_id + contributor + address + str(amount) \
+                           + uuid_date + report_code + schedule + self.run_id
                     uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
 
                     if db_session.query(Disclosure).filter(and_(
