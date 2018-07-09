@@ -29,7 +29,8 @@ DATE_FORMAT = '%d-%b-%y'
 FILERS_PATH = 'html/filers.html'
 
 # Regexs
-FILER_ID_RE ='[AC][0-9][0-9][0-9][0-9][0-9]'
+FILER_ID_RE = '[AC][0-9][0-9][0-9][0-9][0-9]'
+AMOUNT_RE = '[0-9].*\.[0-9][0-9]'
 STATUS_PATTERN = 'status ='
 
 
@@ -60,6 +61,7 @@ class DisclosuresParser(object):
                     cells = list(filter(lambda x: len(x), cells))
                     if not len(cells):
                         continue
+                    self.logger.info('Parsing row %s', cells)
                     filing_year = cells[0]
                     try:
                         filing_year = int(filing_year)
