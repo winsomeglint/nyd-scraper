@@ -73,7 +73,7 @@ class DisclosuresParser(object):
                     try:
                         date = str(datetime.strptime(cells[-3], DATE_FORMAT))
                     except ValueError:
-                        date = None
+                        date = ''
                         amount_index = -3
                     amount = cells[amount_index].replace(',','')
                     try:
