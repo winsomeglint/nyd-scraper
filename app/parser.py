@@ -69,12 +69,17 @@ class DisclosuresParser(object):
                     contributor = cells[1]
                     address_length = len(cells) - 6
                     address = '; '.join(cells[2:2 + address_length])
-                    amount = cells[-4].replace(',','')
+                    amount_index = -4
+                    try:
+                        date = str(datetime.strptime(cells[-3], DATE_FORMAT))
+                    except ValueError:
+                        date = None
+                        amount_index = -3
+                    amount = cells[amount_index].replace(',','')
                     try:
                         amount = float(amount)
                     except ValueError:
                         amount = -1.00
-                    date = str(datetime.strptime(cells[-3], DATE_FORMAT))
                     report_code = cells[-2]
                     schedule = cells[-1]
                     uuid = filer_id + contributor + address + str(amount) + date \
