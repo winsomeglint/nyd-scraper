@@ -1,7 +1,5 @@
 import os
 import re
-import sys
-import sqlite3
 import logging
 
 from os import path, walk
@@ -58,10 +56,11 @@ class DisclosuresParser(object):
 
                     cells = row.xpath('./td//*/text()')
                     cells = list(map(str.strip, cells))
-                    cells = list(filter(lambda x: len(x), cells))
+                    cells = list(filter(len, cells))
                     if not len(cells):
                         continue
-                    self.logger.info('Parsing row %s', cells)
+                    self.logger.info('Unparsed row %s', html.tostring(row))
+                    self.logger.info('Parsed row %s', cells)
                     filing_year = cells[0]
                     try:
                         filing_year = int(filing_year)
