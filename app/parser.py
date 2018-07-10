@@ -1,11 +1,13 @@
 import os
 import re
+import string
 import logging
 
-from os import path, walk
+from random import *
 from lxml import html
-from datetime import datetime
 from hashlib import sha1
+from os import path, walk
+from datetime import datetime
 
 from app.db import db_session
 from app.models import Filer, Disclosure
@@ -30,6 +32,8 @@ FILERS_PATH = 'html/filers.html'
 FILER_ID_RE = '[AC][0-9][0-9][0-9][0-9][0-9]'
 AMOUNT_RE = '[0-9].*\.[0-9][0-9]'
 STATUS_PATTERN = 'status ='
+
+CHARS = string.ascii_letters
 
 
 class DisclosuresParser(object):
@@ -85,8 +89,10 @@ class DisclosuresParser(object):
                     uuid_date = date
                     if date is None:
                         uuid_date = str(datetime.utcnow())
+                    salt = ''.join(choice(CHARS) for x in range(randint(0, 26)))
                     uuid = filer_id + contributor + address + str(amount) \
-                           + uuid_date + report_code + schedule + self.run_id
+                           + uuid_date + report_code + schedule + self.run_id \
+                           + salt
                     uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
 
                     if db_session.query(Disclosure).filter(and_(
@@ -114,7 +120,7 @@ class DisclosuresParser(object):
                         schedule=schedule
                     )
                     db_session.add(record)
-                    self.logger.info('Inserting %s', record)
+                    self.logger.info('Inserting [%s] %s', uuid, record)
 
                 db_session.commit()
 
@@ -137,8 +143,9 @@ class DisclosuresParser(object):
                             status_not_reached = False
                             status = line.split(' = ')[-1]
                             address = '; '.join(address)
+                            salt = ''.join(choice(CHARS) for x in range(randint(0, 26)))
                             uuid = filer_id + name + address + status \
-                                   + self.run_id
+                                   + self.run_id + salt
                             uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
                             if db_session.query(Filer).filter(and_(
                                 Filer.filer_id == filer_id,
@@ -155,7 +162,7 @@ class DisclosuresParser(object):
                                     status=status
                                 )
                                 db_session.add(record)
-                                self.logger.info('Inserting... %s', record)
+                                self.logger.info('Inserting [%s] %s', uuid, record) # noqa
                             break
                         address.append(line)
                 line = self.skip_blank_lines(fh)
