@@ -1,11 +1,9 @@
 import os
 import re
-import string
+import uuid
 import logging
 
-from random import *
 from lxml import html
-from hashlib import sha1
 from os import path, walk
 from datetime import datetime
 from lxml.etree import ParserError
@@ -33,8 +31,6 @@ FILERS_PATH = 'html/filers.html'
 FILER_ID_RE = '[AC][0-9][0-9][0-9][0-9][0-9]'
 AMOUNT_RE = '[0-9].*\.[0-9][0-9]'
 STATUS_PATTERN = 'status ='
-
-CHARS = string.ascii_letters
 
 
 class DisclosuresParser(object):
@@ -91,15 +87,7 @@ class DisclosuresParser(object):
                         amount = -1.00
                     report_code = cells[-2]
                     schedule = cells[-1]
-                    uuid_date = date
-                    if date is None:
-                        uuid_date = str(datetime.utcnow())
-                    salt = ''.join(choice(CHARS) for x in range(randint(0, 26)))
-                    uuid = filer_id + contributor + address + str(amount) \
-                           + uuid_date + report_code + schedule + self.run_id \
-                           + salt
-                    uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
-
+                    d_uuid = str(uuid.uuid1())
                     if db_session.query(Disclosure).filter(and_(
                         Disclosure.filer_id == filer_id,
                         Disclosure.filing_year == filing_year,
@@ -114,7 +102,7 @@ class DisclosuresParser(object):
 
                     record = Disclosure(
                         run_id=self.run_id,
-                        uuid=uuid,
+                        uuid=d_uuid,
                         filer_id=filer_id,
                         filing_year=filing_year,
                         contributor=contributor,
@@ -148,10 +136,7 @@ class DisclosuresParser(object):
                             status_not_reached = False
                             status = line.split(' = ')[-1]
                             address = '; '.join(address)
-                            salt = ''.join(choice(CHARS) for x in range(randint(0, 26)))
-                            uuid = filer_id + name + address + status \
-                                   + self.run_id + salt
-                            uuid = sha1(bytes(uuid, 'utf-8')).hexdigest()
+                            f_uuid = str(uuid.uuid1())
                             if db_session.query(Filer).filter(and_(
                                 Filer.filer_id == filer_id,
                                 Filer.name == name,
@@ -160,7 +145,7 @@ class DisclosuresParser(object):
                             )).first() is None:
                                 record = Filer(
                                     run_id=self.run_id,
-                                    uuid=uuid,
+                                    uuid=f_uuid,
                                     filer_id=filer_id,
                                     name=name,
                                     address=address,
