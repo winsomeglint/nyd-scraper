@@ -8,6 +8,7 @@ from lxml import html
 from hashlib import sha1
 from os import path, walk
 from datetime import datetime
+from lxml.etree import ParserError
 
 from app.db import db_session
 from app.models import Filer, Disclosure
@@ -52,7 +53,11 @@ class DisclosuresParser(object):
                 self.logger.info('Processing: %s', file_path)
                 with open(file_path, encoding='utf8',errors='replace') as fh:
                     content = fh.read()
-                doc = html.fromstring(content)
+                try:
+                    doc = html.fromstring(content)
+                except ParserError:
+                    self.logger.debug('VERIFY: File %s empty', fn)
+                    continue
 
                 for index, row in enumerate(doc.findall(ROW_SELECTOR)):
                     if not index or TERMINATE in html.tostring(row).lower():
