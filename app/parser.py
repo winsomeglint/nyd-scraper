@@ -56,7 +56,7 @@ class DisclosuresParser(object):
                 try:
                     doc = html.fromstring(content)
                 except ParserError:
-                    self.logger.debug('VERIFY: File %s empty', fn)
+                    self.logger.warning('VERIFY: File %s empty', fn)
                     continue
 
                 for index, row in enumerate(doc.findall(ROW_SELECTOR)):
