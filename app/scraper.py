@@ -1,5 +1,5 @@
 import os
-import re
+import filecmp
 import requests
 import logging
 import tempfile
@@ -7,6 +7,7 @@ import tempfile
 from os import path
 from datetime import datetime
 
+from app.db import db_session
 from app.models import Filer
 
 RUNTIME = datetime.now()
@@ -42,31 +43,33 @@ class DisclosuresScraper(object):
 
     def scrape_disclosures(self):
         """ """
-        for filer_id in self.get_filer_ids():
+        for filer_id in db_session.query(Filer.filer_id):
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
-                fn = DISCLOSURES_PATH % (filer_id, f_year)
-                if path.isfile(fn):
-                    continue
-                self.logger.info('Retrieving: %s', fn)
                 data = DISCLOSURES_DATA.copy()
                 data['filerid_in'] = filer_id
                 data['fyear_in'] = f_year
+                fn = DISCLOSURES_PATH % (filer_id, f_year)
                 try:
+                    self.logger.info('Retrieving: %s', fn)
                     r = self.session.post(DISCLOSURES_URL, data)
                 except requests.exceptions.ConnectionError as e:
+                    self.logger.error(e)
                     self.scrape_disclosures()
                     return
 
-                with open(fn, 'ab+') as fh:
+                tmp_file, tmp_path = tempfile.mkstemp()
+                with os.fdopen(tmp_file, 'wb') as tmp:
+                    tmp.write(r.content)
+                not_updated = filecmp.cmp(fn, tmp_path)
+                os.remove(tmp_path)
+                if os.path.isfile(fn) and not_updated:
+                    self.logger.info('No change in %s', fn)
+                    continue
+
+                self.logger.info('%s changed since last scrape; replacing...')
+                with open(fn, 'wb+') as fh:
                     fh.write(r.content)
 
-
-    def get_filer_ids(self):
-        """ """
-        c = self.db.query(FILERS_TABLE, properties=['filer_id'])
-
-        for filer_id in c.fetchall():
-            yield filer_id[0]
 
     def scrape_filers(self):
         """ """
@@ -74,15 +77,16 @@ class DisclosuresScraper(object):
         if path.isfile(FILERS_PATH):
             # Check if the old file and the new are different sizes. If so, use the
             # new one.
-            filers_file_size = os.path.getsize(FILERS_PATH)
+            self.logger.info('Retrieving filers list...')
             tmp_file, tmp_path = tempfile.mkstemp()
-            os.write(tmp_file, r.content)
-            os.close(tmp_file)
-            tmp_file_size = os.path.getsize(tmp_path)
+            with os.fdopen(tmp_file, 'wb') as tmp:
+                tmp.write(r.content)
+            not_updated = filecmp.cmp(FILERS_PATH, tmp_path)
             os.remove(tmp_path)
-            if tmp_file_size == filers_file_size:
+            if not_updated:
+                self.logger.info('No change in filers list.')
                 return
 
-        with open(FILERS_PATH, 'w+') as fh:
+        with open(FILERS_PATH, 'wb+') as fh:
             fh.write(r.content)
-        self.logger.log('New filer ids loaded from source.')
+        self.logger.info('New filer ids loaded from source.')

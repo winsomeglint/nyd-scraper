@@ -10,7 +10,7 @@ from hashlib import md5
 from app.parser import DisclosuresParser
 from app.scraper import DisclosuresScraper
 
-logging.basicConfig(filename='nyd-scraper.log', level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 @click.group()
@@ -18,7 +18,6 @@ logging.basicConfig(filename='nyd-scraper.log', level=logging.INFO)
 def cli(ctx):
     ctx.obj['scraper'] = DisclosuresScraper()
     ctx.obj['parser'] = DisclosuresParser()
-    pass
 
 
 @click.command()
