@@ -41,9 +41,13 @@ class DisclosuresScraper(object):
         self.logger = logging.getLogger(DISCLOSURES_SCRAPER)
 
 
-    def scrape_disclosures(self):
+    def scrape_disclosures(self, filer_id=None):
         """ """
-        for filer_id in db_session.query(Filer.filer_id):
+        iterator = db_session.query(Filer.filer_id)
+        if filer_id is not None:
+            iterator = db_session.query(Filer.filer_id).filter(Filer.filer_id == filer_id)
+        for row in iterator:
+            filer_id = row[0]
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
                 data = DISCLOSURES_DATA.copy()
                 data['filerid_in'] = filer_id
@@ -57,16 +61,17 @@ class DisclosuresScraper(object):
                     self.scrape_disclosures()
                     return
 
-                tmp_file, tmp_path = tempfile.mkstemp()
-                with os.fdopen(tmp_file, 'wb') as tmp:
-                    tmp.write(r.content)
-                not_updated = filecmp.cmp(fn, tmp_path)
-                os.remove(tmp_path)
-                if os.path.isfile(fn) and not_updated:
-                    self.logger.info('No change in %s', fn)
-                    continue
+                if os.path.isfile(fn):
+                    tmp_file, tmp_path = tempfile.mkstemp()
+                    with os.fdopen(tmp_file, 'wb') as tmp:
+                        tmp.write(r.content)
+                    not_updated = filecmp.cmp(fn, tmp_path)
+                    os.remove(tmp_path)
+                    if not_updated:
+                        self.logger.info('No change in %s', fn)
+                        continue
+                    self.logger.info('%s changed since last scrape; replacing...', fn)
 
-                self.logger.info('%s changed since last scrape; replacing...')
                 with open(fn, 'wb+') as fh:
                     fh.write(r.content)
 

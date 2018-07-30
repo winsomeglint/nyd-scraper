@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 import logging
+import fnmatch
 
 from lxml import html
 from os import path, walk
@@ -40,10 +41,13 @@ class DisclosuresParser(object):
         self.logger = logging.getLogger(DISCLOSURES_PARSER)
 
 
-    def parse_disclosures(self):
+    def parse_disclosures(self, filer_id=None):
         """ """
+        pattern = '*'
+        if filer_id is not None:
+            pattern = filer_id + pattern
         for subdir, dirs, files in os.walk(DISCLOSURES_DIR):
-            for fn in files:
+            for fn in fnmatch.filter(files, pattern):
                 filer_id = fn.split(' - ')[0]
                 file_path = path.join(subdir, fn)
                 self.logger.info('Processing: %s', file_path)

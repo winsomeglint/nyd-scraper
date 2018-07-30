@@ -22,8 +22,9 @@ def cli(ctx):
 
 @click.command()
 @click.pass_context
-def scrape_disclosures(ctx):
-    ctx.obj['scraper'].scrape_disclosures()
+@click.argument('filer_id')
+def scrape_disclosures(ctx, filer_id=None):
+    ctx.obj['scraper'].scrape_disclosures(filer_id)
 
 
 @click.command()
@@ -34,8 +35,9 @@ def scrape_filers(ctx):
 
 @click.command()
 @click.pass_context
-def parse_disclosures(ctx):
-    ctx.obj['parser'].parse_disclosures()
+@click.argument('filer_id')
+def parse_disclosures(ctx, filer_id=None):
+    ctx.obj['parser'].parse_disclosures(filer_id)
 
 
 @click.command()
