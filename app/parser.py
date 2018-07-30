@@ -3,6 +3,7 @@ import re
 import uuid
 import logging
 import fnmatch
+import hashlib
 
 from lxml import html
 from os import path, walk
@@ -58,7 +59,8 @@ class DisclosuresParser(object):
                 except ParserError:
                     self.logger.warning('VERIFY: File %s empty', fn)
                     continue
-
+                donation_count = {}
+                counter = 0
                 for index, row in enumerate(doc.findall(ROW_SELECTOR)):
                     if not index or TERMINATE in html.tostring(row).lower():
                         continue
@@ -68,8 +70,8 @@ class DisclosuresParser(object):
                     cells = list(filter(len, cells))
                     if not len(cells):
                         continue
-                    self.logger.info('Unparsed row %s', html.tostring(row))
-                    self.logger.info('Parsed row %s', cells)
+                    #self.logger.info('Unparsed row %s', html.tostring(row))
+                    #self.logger.info('Parsed row %s', cells)
                     filing_year = cells[0]
                     try:
                         filing_year = int(filing_year)
@@ -92,7 +94,16 @@ class DisclosuresParser(object):
                     report_code = cells[-2]
                     schedule = cells[-1]
                     d_uuid = str(uuid.uuid1())
-                    if db_session.query(Disclosure).filter(and_(
+                    count_id = str(filing_year) + contributor + address + str(amount) \
+                               + date + report_code + schedule
+                    m = hashlib.md5()
+                    m.update(count_id.encode('utf-8'))
+                    m = m.hexdigest()
+                    if donation_count.get(m) is None:
+                        donation_count[m] = 1
+                    else:
+                        donation_count[m] += 1
+                    similar_results = db_session.query(Disclosure).filter(and_(
                         Disclosure.filer_id == filer_id,
                         Disclosure.filing_year == filing_year,
                         Disclosure.contributor == contributor,
@@ -101,7 +112,8 @@ class DisclosuresParser(object):
                         Disclosure.date == date,
                         Disclosure.report_code == report_code,
                         Disclosure.schedule == schedule
-                    )).first() is not None:
+                    )).all()
+                    if len(similar_results) >= donation_count[m]:
                         continue
 
                     record = Disclosure(
@@ -117,9 +129,11 @@ class DisclosuresParser(object):
                         schedule=schedule
                     )
                     db_session.add(record)
-                    self.logger.info('Inserting [%s] %s', uuid, record)
+                    counter += 1
+                    self.logger.info('Inserting [%s] %s', d_uuid, record)
 
                 db_session.commit()
+                self.logger.info('Added %d new records.', counter)
 
 
     def parse_filers(self):
