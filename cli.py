@@ -20,34 +20,30 @@ def cli(ctx):
     ctx.obj['parser'] = DisclosuresParser()
 
 
-@click.command()
+@cli.command()
 @click.pass_context
-def scrape_disclosures(ctx):
-    ctx.obj['scraper'].scrape_disclosures()
+@click.argument('target_id', required=False)
+def scrape_disclosures(ctx, target_id=None):
+    ctx.obj['scraper'].scrape_disclosures(target_id)
 
 
-@click.command()
+@cli.command()
 @click.pass_context
 def scrape_filers(ctx):
     ctx.obj['scraper'].scrape_filers()
 
 
-@click.command()
+@cli.command()
 @click.pass_context
-def parse_disclosures(ctx):
-    ctx.obj['parser'].parse_disclosures()
+@click.argument('target_id', required=False)
+def parse_disclosures(ctx, target_id=None):
+    ctx.obj['parser'].parse_disclosures(target_id)
 
 
-@click.command()
+@cli.command()
 @click.pass_context
 def parse_filers(ctx):
     ctx.obj['parser'].parse_filers()
-
-
-cli.add_command(scrape_disclosures)
-cli.add_command(scrape_filers)
-cli.add_command(parse_disclosures)
-cli.add_command(parse_filers)
 
 
 if __name__ == '__main__':

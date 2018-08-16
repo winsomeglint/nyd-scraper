@@ -1,6 +1,8 @@
 import os
 import re
 import uuid
+import fnmatch
+import hashlib
 
 from multiprocessing import Pool
 
@@ -13,7 +15,6 @@ from sqlalchemy import and_
 from app.db import db_session
 from app.models import Filer, Disclosure
 from app.mixins import LoggerMixin
-
 
 # Constants
 DISCLOSURES_DIR = 'html/disclosures'
@@ -38,14 +39,18 @@ class DisclosuresParser(LoggerMixin):
 
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
+        self.record_counter = 0
 
 
-    def parse_disclosures(self):
+    def parse_disclosures(self, target_id=None):
         """ """
+        pattern = '*'
+        if target_id is not None:
+            pattern = target_id + pattern
         pool = Pool(processes=10)
         for subdir, _, files in os.walk(DISCLOSURES_DIR):
-            for fn in files:
-                pool.apply(self.parse_disclosure, args=(subdir, fn ))
+            for fn in fnmatch.filter(files, pattern):
+                pool.apply(self.parse_disclosure, args=(subdir, fn))
 
 
     def parse_disclosure(self, subdir, fn):
@@ -53,7 +58,6 @@ class DisclosuresParser(LoggerMixin):
         filer_id = fn.split(' - ')[0]
         file_path = os.path.join(subdir, fn)
         self.logger.info('Processing: %s', file_path)
-
         with open(file_path, encoding='utf8', errors='replace') as fh:
             content = fh.read()
         try:
@@ -61,7 +65,7 @@ class DisclosuresParser(LoggerMixin):
         except ParserError:
             self.logger.warning('VERIFY: File %s empty', fn)
             return
-
+        donation_count = {}
         for index, row in enumerate(doc.findall(ROW_SELECTOR)):
             if not index or TERMINATE in html.tostring(row).lower():
                 continue
@@ -71,8 +75,6 @@ class DisclosuresParser(LoggerMixin):
             cells = list(filter(len, cells))
             if not len(cells):
                 continue
-            self.logger.info('Unparsed row %s', html.tostring(row))
-            self.logger.info('Parsed row %s', cells)
             filing_year = cells[0]
             try:
                 filing_year = int(filing_year)
@@ -95,16 +97,26 @@ class DisclosuresParser(LoggerMixin):
             report_code = cells[-2]
             schedule = cells[-1]
             d_uuid = str(uuid.uuid1())
-            if db_session.query(Disclosure).filter(and_(
-                    Disclosure.filer_id == filer_id,
-                    Disclosure.filing_year == filing_year,
-                    Disclosure.contributor == contributor,
-                    Disclosure.address == address,
-                    Disclosure.amount == amount,
-                    Disclosure.date == date,
-                    Disclosure.report_code == report_code,
-                    Disclosure.schedule == schedule
-            )).first() is not None:
+            count_id = str(filing_year) + contributor + address + str(amount) \
+                       + date + report_code + schedule
+            m = hashlib.md5()
+            m.update(count_id.encode('utf-8'))
+            m = m.hexdigest()
+            if donation_count.get(m) is None:
+                donation_count[m] = 1
+            else:
+                donation_count[m] += 1
+            similar_results = db_session.query(Disclosure).filter(and_(
+                Disclosure.filer_id == filer_id,
+                Disclosure.filing_year == filing_year,
+                Disclosure.contributor == contributor,
+                Disclosure.address == address,
+                Disclosure.amount == amount,
+                Disclosure.date == date,
+                Disclosure.report_code == report_code,
+                Disclosure.schedule == schedule
+            )).all()
+            if len(similar_results) >= donation_count[m]:
                 continue
 
             record = Disclosure(
@@ -120,9 +132,11 @@ class DisclosuresParser(LoggerMixin):
                 schedule=schedule
             )
             db_session.add(record)
-            self.logger.info('Inserting [%s] %s', uuid, record)
+            self.record_counter += 1
+            self.logger.info('Inserting [%s] %s', d_uuid, record)
 
         db_session.commit()
+        self.logger.info('Added %d new records.', self.record_counter)
 
 
     def parse_filers(self):
