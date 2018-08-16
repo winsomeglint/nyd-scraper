@@ -80,7 +80,7 @@ class DisclosuresParser(LoggerMixin):
                 filing_year = int(filing_year)
             except ValueError:
                 filing_year = 0
-            contributor = cells[1]
+            contributor = cells[1] or ''
             address_length = len(cells) - 6
             address = '; '.join(cells[2:2 + address_length])
             amount_index = -4
@@ -89,16 +89,17 @@ class DisclosuresParser(LoggerMixin):
             except ValueError:
                 date = None
                 amount_index = -3
-            amount = cells[amount_index].replace(',','')
             try:
+                amount = cells[amount_index].replace(',', '')
                 amount = float(amount)
             except ValueError:
                 amount = -1.00
-            report_code = cells[-2]
-            schedule = cells[-1]
+            report_code = cells[-2] or ''
+            schedule = cells[-1] or ''
             d_uuid = str(uuid.uuid1())
+            count_date = date or ''
             count_id = str(filing_year) + contributor + address + str(amount) \
-                       + date + report_code + schedule
+                       + count_date + report_code + schedule
             m = hashlib.md5()
             m.update(count_id.encode('utf-8'))
             m = m.hexdigest()
