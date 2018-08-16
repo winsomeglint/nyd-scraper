@@ -1,18 +1,18 @@
 import os
 import filecmp
 import requests
-import logging
 import tempfile
+
+from multiprocessing import Pool
 
 from os import path
 from datetime import datetime
 
 from app.db import db_session
 from app.models import Filer
+from app.mixins import LoggerMixin
 
 RUNTIME = datetime.now()
-
-DISCLOSURES_SCRAPER = 'disclosures-scraper'
 
 FILERS_URL = 'http://www.elections.ny.gov:8080/plsql_browser/all_filers'
 DISCLOSURES_URL = 'http://www.elections.ny.gov:8080/plsql_browser/filer_contribution_details'
@@ -33,42 +33,49 @@ FILERS_PATH = 'html/filers.html'
 DISCLOSURES_PATH = 'html/disclosures/%s - %s.html'
 
 
-class DisclosuresScraper(object):
+class DisclosuresScraper(LoggerMixin):
 
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
         self.session = requests.session()
-        self.logger = logging.getLogger(DISCLOSURES_SCRAPER)
 
 
     def scrape_disclosures(self):
         """ """
+        pool = Pool(processes=10)
         for filer_id in db_session.query(Filer.filer_id):
+            filer_id = filer_id[0]
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
-                data = DISCLOSURES_DATA.copy()
-                data['filerid_in'] = filer_id
-                data['fyear_in'] = f_year
-                fn = DISCLOSURES_PATH % (filer_id, f_year)
-                try:
-                    self.logger.info('Retrieving: %s', fn)
-                    r = self.session.post(DISCLOSURES_URL, data)
-                except requests.exceptions.ConnectionError as e:
-                    self.logger.error(e)
-                    self.scrape_disclosures()
-                    return
+                pool.apply(self.scrape_disclosure, args=(filer_id, f_year))
 
-                tmp_file, tmp_path = tempfile.mkstemp()
-                with os.fdopen(tmp_file, 'wb') as tmp:
-                    tmp.write(r.content)
-                not_updated = filecmp.cmp(fn, tmp_path)
-                os.remove(tmp_path)
-                if os.path.isfile(fn) and not_updated:
-                    self.logger.info('No change in %s', fn)
-                    continue
 
-                self.logger.info('%s changed since last scrape; replacing...')
-                with open(fn, 'wb+') as fh:
-                    fh.write(r.content)
+    def scrape_disclosure(self, filer_id, f_year):
+        """ """
+        data = DISCLOSURES_DATA.copy()
+        data['filerid_in'] = filer_id
+        data['fyear_in'] = f_year
+        fn = DISCLOSURES_PATH % (filer_id, f_year)
+        try:
+            self.logger.info('Retrieving: %s', fn)
+            r = self.session.post(DISCLOSURES_URL, data)
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error(e)
+            self.scrape_disclosures()
+            return
+
+        tmp_file, tmp_path = tempfile.mkstemp()
+        with os.fdopen(tmp_file, 'wb') as tmp:
+            tmp.write(r.content)
+        not_updated = filecmp.cmp(fn, tmp_path)
+        os.remove(tmp_path)
+        if os.path.isfile(fn) and not_updated:
+            self.logger.info('No change in %s', fn)
+            return
+
+        self.logger.info('%s changed since last scrape; replacing...')
+        with open(fn, 'wb+') as fh:
+            fh.write(r.content)
+            return
 
 
     def scrape_filers(self):
