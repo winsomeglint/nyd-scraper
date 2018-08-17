@@ -174,7 +174,7 @@ class DisclosuresParser(LoggerMixin):
                                     status=status
                                 )
                                 db_session.add(record)
-                                self.logger.info('Inserting [%s] %s', uuid, record) # noqa
+                                self.logger.info('Inserting [%s] %s', f_uuid, record) # noqa
                             break
                         address.append(line)
                 line = self._skip_blank_lines(fh)
