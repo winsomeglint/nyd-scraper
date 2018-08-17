@@ -49,7 +49,7 @@ class DisclosuresScraper(LoggerMixin):
         for row in iterator:
             filer_id = row[0]
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
-                pool.apply(self.scrape_disclosure, args=(filer_id, f_year))
+                pool.apply_async(self.scrape_disclosure, args=(filer_id, f_year))
 
 
     def scrape_disclosure(self, filer_id, f_year):

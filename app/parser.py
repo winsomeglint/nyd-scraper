@@ -50,7 +50,7 @@ class DisclosuresParser(LoggerMixin):
         pool = Pool(processes=10)
         for subdir, _, files in os.walk(DISCLOSURES_DIR):
             for fn in fnmatch.filter(files, pattern):
-                pool.apply(self.parse_disclosure, args=(subdir, fn))
+                pool.apply_async(self.parse_disclosure, args=(subdir, fn))
 
 
     def parse_disclosure(self, subdir, fn):
