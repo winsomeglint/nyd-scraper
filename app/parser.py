@@ -14,7 +14,7 @@ from sqlalchemy import and_
 
 from app.db import db_session
 from app.models import Filer, Disclosure
-from app.mixins import LoggerMixin
+from app.mixins import LoggerMixin, RunMixin
 
 # Constants
 DISCLOSURES_DIR = 'html/disclosures'
@@ -35,11 +35,17 @@ AMOUNT_RE = r'[0-9].*\.[0-9][0-9]'
 STATUS_PATTERN = 'status ='
 
 
-class DisclosuresParser(LoggerMixin):
+class DisclosuresParser(LoggerMixin, RunMixin):
 
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
         self.record_counter = 0
+        self.run = {
+            'type': 'parser',
+            'run_id': self.run_id,
+            'start_time': RUNTIME,
+            'status': 'success'
+        }
 
 
     def parse_disclosures(self, target_id=None):
@@ -51,6 +57,7 @@ class DisclosuresParser(LoggerMixin):
         for subdir, _, files in os.walk(DISCLOSURES_DIR):
             for fn in fnmatch.filter(files, pattern):
                 pool.apply_async(self.parse_disclosure, args=(subdir, fn))
+        self.terminate(operation='parse_disclosures')
 
 
     def parse_disclosure(self, subdir, fn):
@@ -117,6 +124,7 @@ class DisclosuresParser(LoggerMixin):
                 Disclosure.report_code == report_code,
                 Disclosure.schedule == schedule
             )).all()
+
             if len(similar_results) >= donation_count[m]:
                 continue
 
@@ -142,7 +150,7 @@ class DisclosuresParser(LoggerMixin):
 
     def parse_filers(self):
         """ """
-        with open(FILERS_PATH, encoding='utf8',errors='replace') as fh:
+        with open(FILERS_PATH, encoding='utf8', errors='replace') as fh:
             line = self._skip_blank_lines(fh)
             while line:
                 if re.match(FILER_ID_RE, line):
@@ -174,12 +182,14 @@ class DisclosuresParser(LoggerMixin):
                                     status=status
                                 )
                                 db_session.add(record)
-                                self.logger.info('Inserting [%s] %s', f_uuid, record) # noqa
+                                self.logger.info('Inserting [%s] %s', f_uuid,
+                                                 record)
                             break
                         address.append(line)
                 line = self._skip_blank_lines(fh)
 
         db_session.commit()
+        self.terminate(operation='parse_filers')
 
 
     def _skip_blank_lines(self, fh):

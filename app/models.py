@@ -49,6 +49,20 @@ class Disclosure(Base):
                                               self.date)
 
 
+class Run(Base):
+    __tablename__ = 'run'
+
+    id = Column(Integer, primary_key=True)
+    type = Column(Text)
+    run_id = Column(Text)
+    operation = Column(Text, index=True)
+    start_time = Column(DateTime, index=True, default=datetime.utcnow)
+    end_time = Column(DateTime, index=True, default=datetime.utcnow)
+    new_records = Column(Integer, default=0)
+    status = Column(Text)
+    error_msg = Column(Text)
+
+
 engine = create_engine(os.environ.get('DATABASE_URL'))
 
 Base.metadata.create_all(engine)

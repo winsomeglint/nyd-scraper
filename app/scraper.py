@@ -9,8 +9,8 @@ from os import path
 from datetime import datetime
 
 from app.db import db_session
-from app.models import Filer
-from app.mixins import LoggerMixin
+from app.models import Filer, Run
+from app.mixins import LoggerMixin, RunMixin
 
 RUNTIME = datetime.now()
 
@@ -33,11 +33,18 @@ FILERS_PATH = 'html/filers.html'
 DISCLOSURES_PATH = 'html/disclosures/%s - %s.html'
 
 
-class DisclosuresScraper(LoggerMixin):
+class DisclosuresScraper(LoggerMixin, RunMixin):
 
     def __init__(self):
         self.run_id = RUNTIME.strftime(TIME_FORMAT)
         self.session = requests.session()
+        self.record_counter = 0
+        self.run = {
+            'type': 'scraper',
+            'run_id': self.run_id,
+            'start_time': RUNTIME,
+            'status': 'success'
+        }
 
 
     def scrape_disclosures(self, target_id=None):
@@ -50,6 +57,7 @@ class DisclosuresScraper(LoggerMixin):
             filer_id = row[0]
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
                 pool.apply_async(self.scrape_disclosure, args=(filer_id, f_year))
+        self.terminate(operation='scrape_disclosures')
 
 
     def scrape_disclosure(self, filer_id, f_year):
@@ -79,6 +87,7 @@ class DisclosuresScraper(LoggerMixin):
 
         with open(fn, 'wb+') as fh:
             fh.write(r.content)
+        self.record_counter += 1
 
 
     def scrape_filers(self):
@@ -99,4 +108,6 @@ class DisclosuresScraper(LoggerMixin):
 
         with open(FILERS_PATH, 'wb+') as fh:
             fh.write(r.content)
+        self.record_counter += 1
         self.logger.info('New filer ids loaded from source.')
+        self.terminate(operation='scrape_filers')
