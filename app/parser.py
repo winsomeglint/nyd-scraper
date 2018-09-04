@@ -4,15 +4,16 @@ import uuid
 import fnmatch
 import hashlib
 
-from multiprocessing import Pool
-
 from datetime import datetime
+from multiprocessing import Pool
 
 from lxml import html
 from lxml.etree import ParserError
 from sqlalchemy import and_
 
-from app.db import db_session
+from app import db_session
+from app.operation import operation
+from app.base import DisclosuresBase
 from app.models import Filer, Disclosure
 from app.mixins import LoggerMixin, RunMixin
 
@@ -23,8 +24,6 @@ TERMINATE = b'total contributions received during period'
 
 ROW_SELECTOR = './/table[2]/tr'
 
-RUNTIME = datetime.now()
-TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
 DATE_FORMAT = '%d-%b-%y'
 
 FILERS_PATH = 'html/filers.html'
@@ -35,19 +34,14 @@ AMOUNT_RE = r'[0-9].*\.[0-9][0-9]'
 STATUS_PATTERN = 'status ='
 
 
-class DisclosuresParser(LoggerMixin, RunMixin):
+class DisclosuresParser(DisclosuresBase, LoggerMixin, RunMixin):
 
     def __init__(self):
-        self.run_id = RUNTIME.strftime(TIME_FORMAT)
-        self.record_counter = 0
-        self.run = {
-            'type': 'parser',
-            'run_id': self.run_id,
-            'start_time': RUNTIME,
-            'status': 'success'
-        }
+        DisclosuresBase.__init__(self)
+        self.run['type'] = 'parser'
 
 
+    @operation
     def parse_disclosures(self, target_id=None):
         """ """
         pattern = '*'
@@ -57,7 +51,7 @@ class DisclosuresParser(LoggerMixin, RunMixin):
         for subdir, _, files in os.walk(DISCLOSURES_DIR):
             for fn in fnmatch.filter(files, pattern):
                 pool.apply_async(self.parse_disclosure, args=(subdir, fn))
-        self.terminate(operation='parse_disclosures')
+        self.logger.info('Parsed %d new records.', self.record_counter)
 
 
     def parse_disclosure(self, subdir, fn):
@@ -125,6 +119,8 @@ class DisclosuresParser(LoggerMixin, RunMixin):
                 Disclosure.schedule == schedule
             )).all()
 
+            print(similar_results)
+
             if len(similar_results) >= donation_count[m]:
                 continue
 
@@ -145,9 +141,9 @@ class DisclosuresParser(LoggerMixin, RunMixin):
             self.logger.info('Inserting [%s] %s', d_uuid, record)
 
         db_session.commit()
-        self.logger.info('Added %d new records.', self.record_counter)
 
 
+    @operation
     def parse_filers(self):
         """ """
         with open(FILERS_PATH, encoding='utf8', errors='replace') as fh:
@@ -167,7 +163,7 @@ class DisclosuresParser(LoggerMixin, RunMixin):
                             status = line.split(' = ')[-1]
                             address = '; '.join(address)
                             f_uuid = str(uuid.uuid1())
-                            if db_session.query(Filer).filter(and_(
+                            if db_session.query(Filer).filer(and_(
                                     Filer.filer_id == filer_id,
                                     Filer.name == name,
                                     Filer.address == address,
@@ -184,12 +180,12 @@ class DisclosuresParser(LoggerMixin, RunMixin):
                                 db_session.add(record)
                                 self.logger.info('Inserting [%s] %s', f_uuid,
                                                  record)
+                                self.record_counter += 1
                             break
                         address.append(line)
                 line = self._skip_blank_lines(fh)
 
         db_session.commit()
-        self.terminate(operation='parse_filers')
 
 
     def _skip_blank_lines(self, fh):

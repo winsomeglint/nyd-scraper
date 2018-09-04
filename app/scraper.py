@@ -1,26 +1,23 @@
 import os
 import filecmp
-import requests
 import tempfile
 
+from datetime import datetime
 from multiprocessing import Pool
 
-from os import path
-from datetime import datetime
+import requests
 
-from app.db import db_session
-from app.models import Filer, Run
+from app import db_session
+from app.models import Filer
+from app.operation import operation
+from app.base import DisclosuresBase
 from app.mixins import LoggerMixin, RunMixin
-
-RUNTIME = datetime.now()
 
 FILERS_URL = 'http://www.elections.ny.gov:8080/plsql_browser/all_filers'
 DISCLOSURES_URL = 'http://www.elections.ny.gov:8080/plsql_browser/filer_contribution_details'
 
-TIME_FORMAT  = '%Y-%m-%d %H:%M:%S'
-
 FIRST_YEAR = 1999
-LAST_YEAR = RUNTIME.year
+LAST_YEAR = datetime.now().year
 
 DISCLOSURES_DATA = {
     'filerid_in': '', # Specify filer ID here
@@ -33,20 +30,14 @@ FILERS_PATH = 'html/filers.html'
 DISCLOSURES_PATH = 'html/disclosures/%s - %s.html'
 
 
-class DisclosuresScraper(LoggerMixin, RunMixin):
+class DisclosuresScraper(DisclosuresBase, LoggerMixin, RunMixin):
 
     def __init__(self):
-        self.run_id = RUNTIME.strftime(TIME_FORMAT)
-        self.session = requests.session()
-        self.record_counter = 0
-        self.run = {
-            'type': 'scraper',
-            'run_id': self.run_id,
-            'start_time': RUNTIME,
-            'status': 'success'
-        }
+        DisclosuresBase.__init__(self)
+        self.run['type'] = 'scraper'
 
 
+    @operation
     def scrape_disclosures(self, target_id=None):
         """ """
         pool = Pool(processes=10)
@@ -57,7 +48,7 @@ class DisclosuresScraper(LoggerMixin, RunMixin):
             filer_id = row[0]
             for f_year in range(FIRST_YEAR, LAST_YEAR + 1):
                 pool.apply_async(self.scrape_disclosure, args=(filer_id, f_year))
-        self.terminate(operation='scrape_disclosures')
+        self.logger.info('Scraped %d new records.', self.record_counter)
 
 
     def scrape_disclosure(self, filer_id, f_year):
@@ -90,10 +81,11 @@ class DisclosuresScraper(LoggerMixin, RunMixin):
         self.record_counter += 1
 
 
+    @operation
     def scrape_filers(self):
-        """ """
+        """ Scrape master list of filers. """
         r = self.session.get(FILERS_URL)
-        if path.isfile(FILERS_PATH):
+        if os.path.isfile(FILERS_PATH):
             # Check if the old file and the new are different sizes. If so, use the
             # new one.
             self.logger.info('Retrieving filers list...')
@@ -110,4 +102,3 @@ class DisclosuresScraper(LoggerMixin, RunMixin):
             fh.write(r.content)
         self.record_counter += 1
         self.logger.info('New filer ids loaded from source.')
-        self.terminate(operation='scrape_filers')

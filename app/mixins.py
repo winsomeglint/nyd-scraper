@@ -3,10 +3,11 @@ import logging
 from datetime import datetime
 
 from app.models import Run
-from app.db import db_session
+from app import db_session
 
 
 class LoggerMixin:
+
     @property
     def logger(self):
         component = "{}.{}".format(type(self).__module__, type(self).__name__)
@@ -15,7 +16,7 @@ class LoggerMixin:
 
 class RunMixin:
 
-    def terminate(self, operation='default', err=None):
+    def terminate(self, operation=None, err=None):
         if not hasattr(self, 'run'):
             return
 
