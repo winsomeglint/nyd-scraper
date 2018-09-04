@@ -6,7 +6,6 @@ data.sqlite
 dist
 build
 *.egg-info
-__init__.py
 html
 runtime.txt
 *.log

@@ -119,8 +119,6 @@ class DisclosuresParser(DisclosuresBase, LoggerMixin, RunMixin):
                 Disclosure.schedule == schedule
             )).all()
 
-            print(similar_results)
-
             if len(similar_results) >= donation_count[m]:
                 continue
 

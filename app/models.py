@@ -35,6 +35,7 @@ class Disclosure(Base):
     created = Column(DateTime, index=True, default=datetime.utcnow)
     run_id = Column(Text)
     uuid = Column(Text, unique=True)
+    filer_id = Column(Text)
     filer_uuid = Column(Text, ForeignKey('filer.uuid'), index=True)
     filing_year = Column(Integer)
     contributor = Column(Text, index=True)
