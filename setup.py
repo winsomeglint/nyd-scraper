@@ -6,11 +6,11 @@ setup(
     packages=find_packages(),
     scripts=['cli.py'],
     install_requires=['requests', 'lxml', 'click'],
-    author='Lion Summerbell',
+    author='mudsill',
     description='Scraper to download filers and disclosures from elections.ny.gov',
     license='ISC',
     keywords='ny state elections',
-    url='https://github.com/anabase/ny_disclosures',
+    url='https://github.com/mudsill/ny_disclosures',
     entry_ponts={
         'console_scripts': [
             'nyd-scraper = cli',
